@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Series Generator</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2em;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .form-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1em;
+            flex-wrap: wrap;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 1em;
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+            margin: 10px;
+        }
+        .form-group input {
+            padding: 0.5em;
+            margin-top: 0.5em;
+            width: 80px;
+            text-align: center;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .form-group label {
+            font-weight: bold;
+            display: block;
+            color: #444;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 20px auto;
+            display: block;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #error-message {
+            color: red;
+            text-align: center;
+            margin: 10px 0;
+            display: none;
+        }
+        #plotly-div {
+            margin-top: 2em;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Time Series Generator</h1>
+    <div class="form-container">
+        <div class="form-group">
+            <label for="winter">Hiver</label>
+            <input type="number" id="winter" value="5" min="1">
+        </div>
+        <div class="form-group">
+            <label for="spring">Printemps</label>
+            <input type="number" id="spring" value="5" min="1">
+        </div>
+        <div class="form-group">
+            <label for="summer">Été</label>
+            <input type="number" id="summer" value="5" min="1">
+        </div>
+        <div class="form-group">
+            <label for="autumn">Automne</label>
+            <input type="number" id="autumn" value="5" min="1">
+        </div>
+    </div>
+    <button onclick="generateData()">Générer</button>
+    <div id="error-message"></div>
+    <div id="plotly-div"></div>
+
+    <script>
+        function generateData() {
+            // Récupération des valeurs
+            const winter = document.getElementById('winter').value;
+            const spring = document.getElementById('spring').value;
+            const summer = document.getElementById('summer').value;
+            const autumn = document.getElementById('autumn').value;
+            
+            // Création des tableaux avec uniquement les valeurs non vides
+            const labels = [];
+            const noise_sizes = [];
+            const seasons = [];
+            
+            if (winter.trim() !== '') {
+                const value = parseInt(winter);
+                if (value <= 0) {
+                    document.getElementById('error-message').textContent = 'Les valeurs doivent être strictement positives';
+                    document.getElementById('error-message').style.display = 'block';
+                    return;
+                }
+                labels.push(0);
+                noise_sizes.push(value);
+                seasons.push("Hiver");
+            }
+            
+            if (spring.trim() !== '') {
+                const value = parseInt(spring);
+                if (value <= 0) {
+                    document.getElementById('error-message').textContent = 'Les valeurs doivent être strictement positives';
+                    document.getElementById('error-message').style.display = 'block';
+                    return;
+                }
+                labels.push(1);
+                noise_sizes.push(value);
+                seasons.push("Printemps");
+            }
+            
+            if (summer.trim() !== '') {
+                const value = parseInt(summer);
+                if (value <= 0) {
+                    document.getElementById('error-message').textContent = 'Les valeurs doivent être strictement positives';
+                    document.getElementById('error-message').style.display = 'block';
+                    return;
+                }
+                labels.push(2);
+                noise_sizes.push(value);
+                seasons.push("Été");
+            }
+            
+            if (autumn.trim() !== '') {
+                const value = parseInt(autumn);
+                if (value <= 0) {
+                    document.getElementById('error-message').textContent = 'Les valeurs doivent être strictement positives';
+                    document.getElementById('error-message').style.display = 'block';
+                    return;
+                }
+                labels.push(3);
+                noise_sizes.push(value);
+                seasons.push("Automne");
+            }
+            
+            // Vérifier s'il y a au moins une valeur
+            if (noise_sizes.length === 0) {
+                document.getElementById('error-message').textContent = 'Veuillez entrer au moins une valeur';
+                document.getElementById('error-message').style.display = 'block';
+                return;
+            }
+
+            const data = {
+                labels: labels,
+                noise_sizes: noise_sizes,
+                seasons: seasons
+            };
+
+            fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.text())
+            .then(text => {
+                try {
+                    const figure = JSON.parse(text);
+                    if (figure.error) {
+                        throw new Error(figure.error);
+                    }
+                    document.getElementById('error-message').style.display = 'none';
+                    Plotly.newPlot('plotly-div', figure.data, figure.layout);
+                } catch (e) {
+                    throw new Error("Erreur lors de la génération des données");
+                }
+            })
+            .catch(error => {
+                document.getElementById('error-message').textContent = error.message;
+                document.getElementById('error-message').style.display = 'block';
+                console.error('Error:', error);
+            });
+        }
+    </script>
+</body>
+</html>
